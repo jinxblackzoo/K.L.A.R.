@@ -38,32 +38,113 @@ Copyright (C) 2025 jinx@blackzoo.de
    - Level 3: Mindestens 15 Abfragen, 10 richtige für Aufstieg, Gewichtung 2
    - Level 4: Regelmäßige Wiederholung, Gewichtung 1
 
-### Neues Reporting-System
-- Detaillierte Statistiken für jede Karteikarten-Sammlung
-- Zeiterfassung für Übungseinheiten
-- Erfolgsquoten über verschiedene Zeiträume:
-  - Letzte 7 Tage
-  - Letzte 30 Tage
-  - Letztes Jahr
-  - Gesamtzeitraum
-- Durchschnittliche Übungszeiten pro Karte
-- Übersichtliche Darstellung in Tabs
+### M.U.T. - Maßeinheiten Training
+- **Interaktives Übungssystem für Maßeinheiten-Umrechnung**
+  - Unterstützt alle gängigen SI-Einheiten
+  - Dynamische Aufgabengenerierung
+  - Intelligente Rundung und Toleranzberechnung
+  - Unterstützung für Komma- und Punktnotation
+
+- **Kategoriebasiertes Training**
+  - Längeneinheiten (m, km, cm, mm, etc.)
+  - Flächeneinheiten (m², km², cm², etc.)
+  - Volumeneinheiten (m³, l, ml, etc.)
+  - Gewichtseinheiten (kg, g, mg, etc.)
+  - Zeiteinheiten (s, min, h, etc.)
+  - Temperatureinheiten (°C, K, °F)
+
+### Umfassendes Reporting-System
+- **Zeitbasierte Auswertung**
+  - Erfassung aller Lernaktivitäten mit Zeitstempeln
+  - Auswertung über verschiedene Zeiträume:
+    - Letzte 7 Tage
+    - Letzte 30 Tage
+    - Letztes Jahr
+    - Gesamtzeitraum
+
+- **Detaillierte Statistiken**
+  - Karteikarten-Statistiken
+    - Lernfortschritt pro Level
+    - Erfolgsquoten und Rückstufungen
+    - Durchschnittliche Übungszeiten pro Karte
+  - M.U.T.-Statistiken
+    - Anzahl der Trainingssessions
+    - Gesamtdauer des Trainings
+    - Erfolgsquoten pro Kategorie
+    - Themenspezifische Auswertung
+
+- **Übersichtliche Darstellung**
+  - Separate Tabs für verschiedene Bereiche
+  - Filterung nach Zeiträumen und Kategorien
+  - Export-Möglichkeiten für Reports
 
 ## Dateispeicherorte
  
 Das Programm speichert Daten an folgenden Orten:
 
+> **Hinweis für Linux-Einsteiger**: 
+> Die Tilde (`~`) steht für dein persönliches Benutzerverzeichnis. Unter Linux ist dies meist `/home/deinbenutzername`. 
+> Zum Beispiel: Wenn dein Benutzername "lisa" ist, dann ist `~/.local` der Ordner `/home/lisa/.local`.
+> Ordner, die mit einem Punkt beginnen (z.B. `.local` oder `.config`), sind versteckte Ordner. Du kannst sie im Dateimanager mit der Tastenkombination `Strg+H` sichtbar machen.
+
 ### Persönliche Daten
-- `~/.local/share/klar/databases/`: Karteikarten-Sammlungen
-- `~/.local/share/klar/exports/`: Exportierte PDF-Dateien und CSV-Listen
-- `~/.local/share/klar/reports/`: Lernfortschritte und Statistiken
+- `~/.local/share/klar/databases/`: Karteikarten-Sammlungen und M.U.T.-Statistiken
+- `~/.local/share/klar/exports/`: Exportierte PDF-Dateien, CSV-Listen und Statistik-Reports
+- `~/.local/share/klar/reports/`: Lernfortschritte und detaillierte Auswertungen
+  - `cards/`: Karteikarten-Statistiken
+  - `mut/`: M.U.T.-Trainingsauswertungen
 
 ### Konfigurationsdateien
 - `~/.config/klar/settings.ini`: Programmeinstellungen
 - `~/.config/klar/databases.json`: Liste der verfügbaren Karteikarten-Sammlungen
+- `~/.config/klar/mut_config.json`: M.U.T.-Konfiguration und Einheitenpräferenzen
 - `~/.config/klar/themes/`: Benutzerdefinierte Themes (optional)
 
 Die Datenbanken können einfach gesichert werden, indem der komplette `~/.local/share/klar` Ordner kopiert wird.
+
+### Backup und Wiederherstellung
+
+#### Backup erstellen
+```bash
+# Backup-Verzeichnis erstellen (falls nicht vorhanden)
+mkdir -p ~/klar_backup
+
+# Aktuelles Datum zum Backup-Namen hinzufügen
+backup_date=$(date +%Y-%m-%d)
+backup_dir="$HOME/klar_backup/klar_$backup_date"
+
+# Backup aller Daten erstellen
+mkdir -p "$backup_dir"
+cp -r ~/.local/share/klar/* "$backup_dir/"
+cp -r ~/.config/klar/* "$backup_dir/config/"
+
+# Optional: Backup komprimieren
+cd ~/klar_backup
+tar czf "klar_backup_$backup_date.tar.gz" "klar_$backup_date"
+```
+
+#### Backup wiederherstellen
+```bash
+# WICHTIG: Stelle sicher, dass K.L.A.R. nicht läuft!
+
+# 1. Backup entpacken (falls komprimiert)
+cd ~/klar_backup
+tar xzf klar_backup_DATUM.tar.gz   # Ersetze DATUM mit dem Backup-Datum
+
+# 2. Stelle sicher, dass die Zielverzeichnisse existieren
+mkdir -p ~/.local/share/klar
+mkdir -p ~/.config/klar
+
+# 3. Daten wiederherstellen
+cp -r ~/klar_backup/klar_DATUM/* ~/.local/share/klar/
+cp -r ~/klar_backup/klar_DATUM/config/* ~/.config/klar/
+
+# 4. Berechtigungen korrigieren
+chmod -R u+rw ~/.local/share/klar
+chmod -R u+rw ~/.config/klar
+```
+
+> **Tipp**: Erstelle regelmäßige Backups deiner Daten, besonders vor Updates oder größeren Änderungen. Die Backup-Dateien kannst du auch auf einem USB-Stick oder in deiner Cloud speichern.
 
 ## Installation
 

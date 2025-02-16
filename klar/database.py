@@ -98,6 +98,18 @@ class PracticeAttempt(Base):
     level = Column(Integer, nullable=False)  # Level zum Zeitpunkt des Versuchs
     duration = Column(Integer, nullable=False, default=0)  # Dauer der Übung in Sekunden
 
+class MUTSession(Base):
+    """Speichert Informationen über M.U.T. Lernsessions"""
+    __tablename__ = 'mut_sessions'
+
+    id = Column(Integer, primary_key=True)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    duration_seconds = Column(Integer, nullable=False)
+    correct_answers = Column(Integer, nullable=False)
+    total_answers = Column(Integer, nullable=False)
+    topic = Column(String)  # Kann None sein, wenn keine spezifische Kategorie gewählt wurde
+
 class DatabaseManager:
     def __init__(self):
         self.config_dir = os.path.join(
@@ -619,6 +631,61 @@ def get_database_stats(session, database=None):
         }
     
     return stats
+
+def get_mut_stats(session, time_range=None):
+    """
+    Holt die M.U.T. Statistiken aus der Datenbank.
+    
+    Args:
+        session: SQLAlchemy Session
+        time_range (str, optional): Zeitbereich für die Statistiken ('week', 'month', 'year')
+    
+    Returns:
+        dict: Dictionary mit den Statistiken
+    """
+    query = session.query(MUTSession)
+    
+    if time_range:
+        if time_range == 'week':
+            start_date = datetime.now() - timedelta(days=7)
+        elif time_range == 'month':
+            start_date = datetime.now() - timedelta(days=30)
+        elif time_range == 'year':
+            start_date = datetime.now() - timedelta(days=365)
+        query = query.filter(MUTSession.start_time >= start_date)
+    
+    sessions = query.all()
+    
+    if not sessions:
+        return {
+            'total_sessions': 0,
+            'total_duration': 0,
+            'total_answers': 0,
+            'correct_answers': 0,
+            'success_rate': 0,
+            'sessions': []
+        }
+    
+    total_duration = sum(session.duration_seconds for session in sessions)
+    total_answers = sum(session.total_answers for session in sessions)
+    correct_answers = sum(session.correct_answers for session in sessions)
+    success_rate = (correct_answers / total_answers * 100) if total_answers > 0 else 0
+    
+    return {
+        'total_sessions': len(sessions),
+        'total_duration': total_duration,
+        'total_answers': total_answers,
+        'correct_answers': correct_answers,
+        'success_rate': success_rate,
+        'sessions': [{
+            'start_time': session.start_time.strftime("%d.%m.%Y %H:%M"),
+            'end_time': session.end_time.strftime("%d.%m.%Y %H:%M"),
+            'duration': session.duration_seconds,
+            'correct': session.correct_answers,
+            'total': session.total_answers,
+            'topic': session.topic
+        } for session in sessions]
+    }
 
 def format_duration(seconds):
     """

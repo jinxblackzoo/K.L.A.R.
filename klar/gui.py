@@ -28,7 +28,12 @@ import os
 import gi
 import json
 from datetime import datetime, timedelta
-
+from .mut_database import SI_UNITS, get_random_conversion, get_conversion_factor
+from .database import (
+    DatabaseManager, Flashcard, PracticeAttempt, Base,
+    get_database_stats, get_weekly_stats, get_flashcard_stats,
+    format_duration, MUTSession, get_mut_stats
+)
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gdk, Gio
@@ -39,11 +44,10 @@ from sqlalchemy.orm import sessionmaker
 from klar.database import (
     init_db, add_flashcard, get_all_flashcards, update_flashcard_stats,
     db_manager, get_card_for_practice, get_flashcard_stats, get_database_stats,
-    add_study_session, Base, update_database_structure  # update_database_structure hier importieren
+    add_study_session, update_database_structure  # update_database_structure hier importieren
 )
 import subprocess
 import random
-
 
 # 3. Hauptfenster
 
@@ -89,6 +93,14 @@ class MainWindow(Gtk.ApplicationWindow):
         # Hauptmenü erstellen
         self.create_main_menu()
 
+        # Initialisiere Variablen für M.U.T.
+        self.mut_session_start = None
+        self.mut_session_topic = None
+        self.mut_correct_answers = 0
+        self.mut_total_answers = 0
+        self.current_task = None
+        self.waiting_for_enter = False
+
     def create_main_menu(self):
         """
         Erstellt das Hauptmenü mit der aktualisierten Struktur.
@@ -126,7 +138,12 @@ class MainWindow(Gtk.ApplicationWindow):
         collections_button.connect("clicked", self.show_databases_menu)
         menu_box.append(collections_button)
 
-        # C. Reports
+        # C. M.U.T. - Mathematische Umrechnungen Trainieren
+        mut_button = Gtk.Button(label="M.U.T. beim Einheiten umrechnen")
+        mut_button.connect("clicked", self.show_mut_menu)
+        menu_box.append(mut_button)
+
+        # D. Reports
         reports_button = Gtk.Button(label="Reports")
         reports_button.connect("clicked", self.show_reports)
         menu_box.append(reports_button)
@@ -988,6 +1005,540 @@ class MainWindow(Gtk.ApplicationWindow):
         # Starte Timer für die nächste Karteikarte
         self.next_flashcard_timer = GLib.timeout_add(2500, self.load_next_flashcard)
 
+    def show_mut_menu(self, button):
+        """
+        Zeigt das M.U.T. Menü an.
+        """
+        # Hauptmenü verstecken und Zurück-Button anzeigen
+        self.back_button.set_visible(True)
+
+        # Content Stack leeren
+        while child := self.content_stack.get_first_child():
+            self.content_stack.remove(child)
+
+        # Hauptbox erstellen
+        main_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=20,
+            margin_top=30,
+            margin_bottom=30,
+            margin_start=30,
+            margin_end=30
+        )
+
+        # Willkommenstext
+        welcome_label = Gtk.Label()
+        welcome_label.set_markup(
+            "<span size='x-large' weight='bold'>Mathematische Umrechnungen Trainieren</span>\n\n"
+            "<span>Wähle aus, welche Einheiten du üben möchtest:</span>"
+        )
+        welcome_label.set_margin_bottom(20)
+        main_box.append(welcome_label)
+
+        # Box für die Auswahlbuttons
+        button_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10
+        )
+        button_box.set_halign(Gtk.Align.CENTER)
+
+        # Kategorien mit ihren Beschreibungen
+        categories = {
+            "length": "Längeneinheiten (m, cm, mm, ...)",
+            "area": "Flächeneinheiten (m², ha, cm², ...)",
+            "volume": "Volumeneinheiten (m³, l, ml, ...)",
+            "time": "Zeiteinheiten (h, min, s, ...)",
+            "mass": "Masseneinheiten (t, kg, g, ...)",
+            "speed": "Geschwindigkeitseinheiten (km/h, m/s)",
+            "temperature": "Temperatureinheiten (°C, K, °F)",
+            "pressure": "Druckeinheiten (bar, Pa, hPa)",
+            "energy": "Energieeinheiten (kWh, kJ, J)",
+            "power": "Leistungseinheiten (kW, W)",
+            "electric": "Elektrische Einheiten (V, A, Ω, ...)",
+            "random": "Gemischte Aufgaben"
+        }
+
+        # Erstelle Checkboxen in einem Grid-Layout
+        row = 0
+        col = 0
+        self.category_vars = {}  # Dict für die Checkbox-Variablen
+        for category, description in categories.items():
+            self.category_vars[category] = Gtk.CheckButton(label=description)
+            self.category_vars[category].set_margin_start(50)
+            self.category_vars[category].set_margin_end(50)
+            button_box.append(self.category_vars[category])
+
+            # Nächste Position
+            col += 1
+            if col > 1:  # 2 Spalten
+                col = 0
+                row += 1
+
+        main_box.append(button_box)
+
+        # Kontrollbox
+        control_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+            margin_top=20
+        )
+        control_box.set_halign(Gtk.Align.CENTER)
+        main_box.append(control_box)
+
+        # Start-Button
+        start_button = Gtk.Button(label="Training starten")
+        start_button.connect("clicked", self.start_mut_session_with_categories)
+        control_box.append(start_button)
+
+        # Zurück-Button
+        back_button = Gtk.Button(label="Zurück zum Hauptmenü")
+        back_button.connect("clicked", lambda b: self.show_main_menu())
+        control_box.append(back_button)
+
+        # Zur Stack hinzufügen und anzeigen
+        self.content_stack.add_named(main_box, "mut_menu")
+        self.content_stack.set_visible_child_name("mut_menu")
+
+    def start_mut_session_with_categories(self, button):
+        """
+        Startet eine M.U.T. Session mit den ausgewählten Kategorien.
+        """
+        # Sammle ausgewählte Kategorien
+        selected_categories = [
+            category for category, var in self.category_vars.items()
+            if var.get_active() and category != "random"  # Ignoriere "random" Option
+        ]
+
+        # Prüfe ob mindestens eine Kategorie ausgewählt wurde
+        if not selected_categories:
+            error_dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.OK,
+                text="Bitte wähle mindestens eine Kategorie aus!"
+            )
+            error_dialog.connect("response", lambda d, r: d.destroy())
+            error_dialog.show()
+            return
+
+        # Starte die Session mit den ausgewählten Kategorien
+        self.start_mut_session(None, selected_categories)
+
+    def start_mut_session(self, button=None, categories=None):
+        """
+        Startet eine neue M.U.T. Trainings-Session.
+        
+        Args:
+            button: Der Button der geklickt wurde (kann None sein)
+            categories (list): Liste der ausgewählten Kategorien. Wenn None, werden
+                             zufällige Kategorien verwendet.
+        """
+        # Startzeit und Thema der Session speichern
+        self.mut_session_start = datetime.now()
+        self.mut_session_topic = categories
+        self.mut_correct_answers = 0
+        self.mut_total_answers = 0
+
+        # Content Stack leeren
+        while child := self.content_stack.get_first_child():
+            self.content_stack.remove(child)
+
+        # Session Box erstellen
+        session_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=20,
+            margin_top=30,
+            margin_bottom=30,
+            margin_start=30,
+            margin_end=30
+        )
+
+        # Aufgabenfeld
+        task_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10
+        )
+        task_box.set_halign(Gtk.Align.CENTER)
+
+        # Themenanzeige
+        topic_label = Gtk.Label()
+        topic_text = "Gemischte Aufgaben" if categories is None else f"Thema: {', '.join(categories)}"
+        topic_label.set_markup(f"<span size='large' weight='bold'>{topic_text}</span>")
+        topic_label.set_margin_bottom(20)
+        task_box.append(topic_label)
+
+        # Aufgabentext
+        self.task_label = Gtk.Label()
+        task_box.append(self.task_label)
+
+        # Box für Eingabe
+        answer_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        answer_box.set_halign(Gtk.Align.CENTER)
+
+        # Eingabefeld
+        self.answer_entry = Gtk.Entry()
+        self.answer_entry.set_placeholder_text("Deine Antwort (z.B. 1500)")
+        self.answer_entry.set_width_chars(20)
+        
+        # Verbinde das key-pressed Signal
+        controller = Gtk.EventControllerKey()
+        controller.connect("key-pressed", self.on_mut_key_press)
+        self.answer_entry.add_controller(controller)
+        
+        answer_box.append(self.answer_entry)
+
+        # Einheiten-Combobox
+        self.unit_combo = Gtk.ComboBoxText()
+        answer_box.append(self.unit_combo)
+
+        # Hilfe-Button
+        help_button = Gtk.Button(label="?")
+        help_button.get_style_context().add_class("circular")
+        help_button.set_tooltip_text("Zeige Umrechnungshilfen (Achtung: Die Aufgabe wird als falsch gewertet!)")
+        help_button.connect("clicked", self.show_conversion_help)
+        answer_box.append(help_button)
+
+        # Prüfen Button
+        check_button = Gtk.Button(label="Prüfen")
+        check_button.connect("clicked", self.check_mut_answer)
+        answer_box.append(check_button)
+
+        task_box.append(answer_box)
+        session_box.append(task_box)
+
+        # Box für Aktions-Buttons
+        self.action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.action_box.set_halign(Gtk.Align.CENTER)
+        self.action_box.set_margin_top(10)
+        
+        # Zeige Lösung Button (anfangs versteckt)
+        self.show_solution_button = Gtk.Button(label="Zeige Lösung")
+        self.show_solution_button.connect("clicked", self.show_solution)
+        self.show_solution_button.set_visible(False)
+        self.action_box.append(self.show_solution_button)
+        
+        # Nächste Aufgabe Button (anfangs versteckt)
+        self.next_task_button = Gtk.Button(label="Nächste Aufgabe")
+        self.next_task_button.connect("clicked", self.next_task)
+        self.next_task_button.set_visible(False)
+        self.action_box.append(self.next_task_button)
+
+        session_box.append(self.action_box)
+
+        # Feedback Label (für richtig/falsch Anzeige)
+        self.feedback_label = Gtk.Label()
+        session_box.append(self.feedback_label)
+
+        # Statistik Label
+        self.stats_label = Gtk.Label()
+        self.stats_label.set_markup(
+            "<span>Richtige Antworten: 0/0</span>"
+        )
+        session_box.append(self.stats_label)
+
+        # Beenden Button
+        end_button = Gtk.Button(label="Lernsession beenden")
+        end_button.connect("clicked", self.end_mut_session)
+        end_button.set_margin_top(30)
+        session_box.append(end_button)
+
+        # Zur Stack hinzufügen und anzeigen
+        self.content_stack.add_named(session_box, "mut_session")
+        self.content_stack.set_visible_child_name("mut_session")
+
+        # Erste Aufgabe generieren
+        self.generate_new_task()
+
+    def generate_new_task(self):
+        """
+        Generiert eine neue Aufgabe basierend auf dem gewählten Thema.
+        """
+        # Setze first_try für die neue Aufgabe
+        self.first_try = True
+        
+        # Lösche zuerst das alte Feedback und verstecke die Buttons
+        self.feedback_label.set_text("")
+        self.show_solution_button.set_visible(False)
+        self.next_task_button.set_visible(False)
+        
+        # Hole eine zufällige Aufgabe
+        if isinstance(self.mut_session_topic, list):
+            category = random.choice(self.mut_session_topic)
+        else:
+            category = None
+            
+        self.current_task = get_random_conversion(category)
+
+        # Setze den Aufgabentext
+        self.task_label.set_markup(
+            f"<span size='large'>Bitte rechne {self.current_task['value']} {self.current_task['from_unit']} "
+            f"in {self.current_task['to_unit']} um.</span>"
+        )
+
+        # Aktualisiere die Einheiten-Combobox
+        self.unit_combo.remove_all()
+        units = SI_UNITS[self.current_task['category']]['units']
+        for unit in units:
+            self.unit_combo.append_text(unit)
+        self.unit_combo.set_active(0)
+        
+        # Setze das Eingabefeld zurück
+        self.answer_entry.set_text("")
+        self.answer_entry.grab_focus()
+        
+        # Lösche das Feedback und verstecke die Buttons
+        self.feedback_label.set_text("")
+        self.show_solution_button.set_visible(False)
+        self.next_task_button.set_visible(False)
+
+    def on_mut_key_press(self, controller, keyval, keycode, state):
+        """Behandelt Tastatureingaben im M.U.T."""
+        keyname = Gdk.keyval_name(keyval)
+        
+        if keyname == "Return":
+            if self.waiting_for_enter:
+                # Wenn wir auf Enter warten, generiere neue Aufgabe
+                self.generate_new_task()
+                self.waiting_for_enter = False
+                return True
+            else:
+                # Sonst prüfe die Antwort
+                self.check_mut_answer(None)
+                return True
+        return False
+
+    def show_result_dialog(self, is_correct, message):
+        """
+        Zeigt einen Dialog mit dem Ergebnis der Aufgabe an.
+        """
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            modal=True,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text=message
+        )
+        dialog.connect("response", lambda d, r: d.destroy())
+        dialog.show()
+
+    def show_conversion_help(self, button):
+        """
+        Zeigt einen Dialog mit Umrechnungshilfen an.
+        Die aktuelle Aufgabe wird als falsch gewertet.
+        """
+        # Aktuelle Aufgabe als falsch werten
+        self.mut_total_answers += 1
+        self.update_mut_stats()
+
+        # Hole die Umrechnungshilfen für die aktuelle Kategorie
+        category = self.current_task['category']
+        units = SI_UNITS[category]["units"]
+        
+        # Erstelle den Hilfetext
+        help_text = f"<span size='large' weight='bold'>Umrechnungshilfen für {SI_UNITS[category]['name']}:</span>\n\n"
+        for unit, info in units.items():
+            help_text += f"<span weight='bold'>{info['hint']}</span>\n"
+        
+        # Zeige den Dialog
+        self.show_info_dialog(
+            "Umrechnungshilfen",
+            help_text,
+            use_markup=True
+        )
+
+        # Setze das Feedback
+        self.feedback_label.set_markup(
+            "<span size='large' foreground='red'>✗ Falsch - Hilfe wurde verwendet</span>"
+        )
+
+        # Generiere eine neue Aufgabe
+        self.generate_new_task()
+        
+        # Leere das Antwortfeld
+        self.answer_entry.set_text("")
+
+    def update_mut_stats(self):
+        """
+        Aktualisiert die Statistik-Anzeige.
+        """
+        self.stats_label.set_markup(
+            f"<span>Richtige Antworten: {self.mut_correct_answers}/{self.mut_total_answers}</span>"
+        )
+
+    def end_mut_session(self, button):
+        """
+        Beendet die aktuelle Lernsession.
+        - Stoppt den Timer
+        - Aktualisiert die Statistiken
+        - Kehrt zum Hauptmenü zurück
+        """
+        # Sessiondauer berechnen
+        session_end = datetime.now()
+        session_duration = (session_end - self.mut_session_start).total_seconds()
+
+        # Statistiken für das Reporting
+        mut_session = MUTSession(
+            start_time=self.mut_session_start,
+            end_time=session_end,
+            duration_seconds=int(session_duration),
+            correct_answers=self.mut_correct_answers,
+            total_answers=self.mut_total_answers,
+            topic=str(self.mut_session_topic) if self.mut_session_topic else None
+        )
+        
+        # Session in der Datenbank speichern
+        self.session.add(mut_session)
+        self.session.commit()
+
+        # Info-Dialog anzeigen
+        success_rate = (self.mut_correct_answers / self.mut_total_answers * 100) if self.mut_total_answers > 0 else 0
+        
+        # Dialog mit Haupt- und Nebentext erstellen
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            modal=True,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text="Session beendet!"
+        )
+        
+        # Box für den sekundären Text erstellen
+        secondary_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        
+        # Labels für die Statistiken
+        duration_label = Gtk.Label(label=f"Dauer: {format_duration(int(session_duration))}")
+        answers_label = Gtk.Label(label=f"Richtige Antworten: {self.mut_correct_answers} von {self.mut_total_answers}")
+        rate_label = Gtk.Label(label=f"Erfolgsquote: {success_rate:.1f}%")
+        
+        # Labels zur Box hinzufügen
+        secondary_box.append(duration_label)
+        secondary_box.append(answers_label)
+        secondary_box.append(rate_label)
+        
+        # Box zum Dialog hinzufügen
+        dialog_box = dialog.get_message_area()
+        dialog_box.append(secondary_box)
+        
+        # Dialog anzeigen und dann zerstören
+        dialog.connect("response", lambda d, r: d.destroy())
+        dialog.show()
+
+        # Zurück zum Hauptmenü
+        self.show_main_menu(None)
+
+    def show_solution(self, button):
+        """Zeigt die Lösung der aktuellen Aufgabe an"""
+        factor, offset = get_conversion_factor(self.current_task['from_unit'], self.current_task['to_unit'])
+        if offset != 0:  # Für Temperatureinheiten
+            if self.current_task['from_unit'] == "°F":
+                expected = (self.current_task['value'] - 32) * factor + offset
+            else:
+                expected = self.current_task['value'] * factor + offset
+        else:  # Für normale Einheiten
+            expected = self.current_task['value'] * factor
+
+        # Bestimme die Anzahl der Nachkommastellen basierend auf dem Wert
+        if abs(expected) >= 1:
+            decimal_places = 3  # Standard: 3 Nachkommastellen für normale Werte
+        else:
+            # Finde die erste signifikante Stelle
+            str_value = f"{expected:.10f}"  # Konvertiere mit vielen Nachkommastellen
+            significant_digit = 0
+            for i, digit in enumerate(str_value.split('.')[1]):
+                if digit != '0':
+                    significant_digit = i
+                    break
+            decimal_places = significant_digit + 3  # 3 weitere Stellen nach der ersten signifikanten Stelle
+
+        self.feedback_label.set_markup(
+            f"<span size='large' foreground='blue'>Die richtige Antwort ist {expected:.{decimal_places}f} {self.current_task['to_unit']}</span>"
+        )
+        
+        # Verstecke den Lösung-Button und zeige den Nächste-Aufgabe-Button
+        self.show_solution_button.set_visible(False)
+        self.next_task_button.set_visible(True)
+
+    def check_mut_answer(self, button):
+        """
+        Überprüft die eingegebene Antwort für M.U.T.
+        - Berechnet den erwarteten Wert
+        - Vergleicht die Benutzerantwort mit dem erwarteten Wert
+        - Zeigt Feedback an und aktualisiert die Statistiken
+        """
+        # Hole die Benutzerantwort und wandle Komma in Punkt um
+        try:
+            user_input = self.answer_entry.get_text().strip().replace(',', '.')
+            user_value = float(user_input)
+        except ValueError:
+            self.feedback_label.set_markup(
+                "<span size='large' foreground='red'>✗ Ungültige Eingabe! Bitte gib eine Zahl ein.</span>"
+            )
+            return
+
+        # Berechne den erwarteten Wert
+        factor, offset = get_conversion_factor(self.current_task['from_unit'], self.current_task['to_unit'])
+        if offset != 0:  # Für Temperatureinheiten
+            if self.current_task['from_unit'] == "°F":
+                expected = (self.current_task['value'] - 32) * factor + offset
+            else:
+                expected = self.current_task['value'] * factor + offset
+        else:  # Für normale Einheiten
+            expected = self.current_task['value'] * factor
+
+        # Bestimme die relative Toleranz basierend auf der Größenordnung des erwarteten Werts
+        if abs(expected) >= 1:
+            tolerance = 1e-6  # Relative Toleranz von 0.0001%
+        else:
+            # Bei sehr kleinen Zahlen verwenden wir eine absolute Toleranz
+            tolerance = 1e-10
+
+        # Überprüfe die Antwort mit relativer Toleranz
+        is_correct = abs(expected - user_value) <= max(abs(expected * tolerance), tolerance)
+
+        # Aktualisiere die Statistiken
+        self.mut_total_answers += 1
+        if is_correct:
+            self.mut_correct_answers += 1
+            self.feedback_label.set_markup(
+                "<span size='large' foreground='green'>✓ Richtig!</span>"
+            )
+            # Deaktiviere das Eingabefeld während der Wartezeit
+            self.answer_entry.set_sensitive(False)
+            # Starte Timer für die nächste Aufgabe nach 1,5 Sekunden
+            GLib.timeout_add(1500, self._generate_next_task)
+        else:
+            self.feedback_label.set_markup(
+                "<span size='large' foreground='red'>✗ Falsch!</span>"
+            )
+            # Zeige den Lösungs-Button
+            self.show_solution_button.set_visible(True)
+
+        # Aktualisiere die Statistik-Anzeige
+        self.update_mut_stats()
+
+        # Leere das Antwortfeld
+        self.answer_entry.set_text("")
+
+    def _generate_next_task(self):
+        """
+        Hilfsmethode zum Generieren der nächsten Aufgabe.
+        Wird nach einer Verzögerung aufgerufen.
+        """
+        # Aktiviere das Eingabefeld wieder
+        self.answer_entry.set_sensitive(True)
+        # Generiere neue Aufgabe
+        self.generate_new_task()
+        # Gib False zurück, damit der Timer nicht wiederholt wird
+        return False
+
+    def next_task(self, button):
+        """Lädt die nächste Aufgabe"""
+        self.first_try = True
+        self.show_solution_button.set_visible(False)
+        self.next_task_button.set_visible(False)
+        self.generate_new_task()
+
     def show_manage_databases_dialog(self, button):
         """
         Zeigt einen Dialog zum Verwalten der Karteikartensammlungen.
@@ -1180,9 +1731,6 @@ class MainWindow(Gtk.ApplicationWindow):
             else:
                 dialog.destroy()
 
-        dialog.connect("response", on_response)
-        dialog.show()
-
     def show_error_dialog(self, message):
         """Zeigt einen Fehlerdialog an"""
         dialog = Gtk.Dialog(title="Fehler")
@@ -1209,7 +1757,7 @@ class MainWindow(Gtk.ApplicationWindow):
         dialog.connect("response", lambda d, r: d.destroy())
         dialog.show()
 
-    def show_info_dialog(self, title, message):
+    def show_info_dialog(self, title, message, use_markup=False):
         """Zeigt einen Informationsdialog an"""
         dialog = Gtk.Dialog(title=title)
         dialog.set_transient_for(self)
@@ -1225,7 +1773,10 @@ class MainWindow(Gtk.ApplicationWindow):
         
         # Message Label
         label = Gtk.Label()
-        label.set_markup(message)
+        if use_markup:
+            label.set_markup(message)
+        else:
+            label.set_text(message)
         label.set_wrap(True)
         content_area.append(label)
         
@@ -1293,11 +1844,14 @@ class MainWindow(Gtk.ApplicationWindow):
                 scrolled.set_size_request(680, 450)  # Größe für die ScrolledWindow
                 
                 # Box für den Tab-Inhalt
-                db_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-                db_box.set_margin_top(10)
-                db_box.set_margin_bottom(10)
-                db_box.set_margin_start(20)  # Mehr Platz an den Seiten
-                db_box.set_margin_end(20)
+                db_box = Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL,
+                    spacing=10,
+                    margin_top=10,
+                    margin_bottom=10,
+                    margin_start=20,  # Mehr Platz an den Seiten
+                    margin_end=20
+                )
                 db_box.set_size_request(640, -1)  # Breite festlegen, Höhe automatisch
                 
                 # Datenbankname als Überschrift
@@ -1367,6 +1921,142 @@ class MainWindow(Gtk.ApplicationWindow):
                 
                 # Tab zum Notebook hinzufügen
                 notebook.append_page(scrolled, tab_label)
+
+            # M.U.T. Report Tab
+            mut_box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=20,
+                margin_top=10,
+                margin_bottom=10,
+                margin_start=10,
+                margin_end=10
+            )
+
+            # Zeitbereich-Auswahl für M.U.T.
+            mut_time_box = Gtk.Box(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                spacing=10,
+                halign=Gtk.Align.CENTER
+            )
+            mut_time_label = Gtk.Label(label="Zeitbereich:")
+            mut_time_box.append(mut_time_label)
+
+            mut_time_combo = Gtk.ComboBoxText()
+            for time_range in ["Alle", "Letzte Woche", "Letzter Monat", "Letztes Jahr"]:
+                mut_time_combo.append_text(time_range)
+            mut_time_combo.set_active(0)
+            mut_time_box.append(mut_time_combo)
+            mut_box.append(mut_time_box)
+
+            # Statistik-Labels für M.U.T.
+            mut_stats_box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=10,
+                margin_top=20
+            )
+            mut_box.append(mut_stats_box)
+
+            # Funktion zum Aktualisieren der M.U.T. Statistiken
+            def update_mut_stats(combo):
+                # Alle bisherigen Statistiken entfernen
+                while child := mut_stats_box.get_first_child():
+                    mut_stats_box.remove(child)
+
+                # Zeitbereich bestimmen
+                time_range = None
+                if combo.get_active_text() == "Letzte Woche":
+                    time_range = "week"
+                elif combo.get_active_text() == "Letzter Monat":
+                    time_range = "month"
+                elif combo.get_active_text() == "Letztes Jahr":
+                    time_range = "year"
+
+                # Statistiken abrufen
+                stats = get_mut_stats(self.session, time_range)
+
+                # Übersichts-Box
+                overview_frame = Gtk.Frame(label="Übersicht")
+                overview_box = Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL,
+                    spacing=10,
+                    margin_top=10,
+                    margin_bottom=10,
+                    margin_start=10,
+                    margin_end=10
+                )
+                overview_frame.set_child(overview_box)
+
+                # Statistik-Labels hinzufügen
+                labels = [
+                    f"Anzahl Sessions: {stats['total_sessions']}",
+                    f"Gesamtdauer: {format_duration(stats['total_duration'])}",
+                    f"Gesamte Antworten: {stats['total_answers']}",
+                    f"Richtige Antworten: {stats['correct_answers']}",
+                    f"Erfolgsquote: {stats['success_rate']:.1f}%"
+                ]
+                for label_text in labels:
+                    label = Gtk.Label(
+                        label=label_text,
+                        halign=Gtk.Align.START
+                    )
+                    overview_box.append(label)
+
+                mut_stats_box.append(overview_frame)
+
+                # Sessions-Liste
+                if stats['sessions']:
+                    sessions_frame = Gtk.Frame(label="Einzelne Sessions")
+                    sessions_box = Gtk.Box(
+                        orientation=Gtk.Orientation.VERTICAL,
+                        spacing=10,
+                        margin_top=10,
+                        margin_bottom=10,
+                        margin_start=10,
+                        margin_end=10
+                    )
+                    sessions_frame.set_child(sessions_box)
+
+                    for session in stats['sessions']:
+                        session_box = Gtk.Box(
+                            orientation=Gtk.Orientation.VERTICAL,
+                            spacing=5
+                        )
+                        session_box.append(Gtk.Label(
+                            label=f"Start: {session['start_time']}",
+                            halign=Gtk.Align.START
+                        ))
+                        session_box.append(Gtk.Label(
+                            label=f"Ende: {session['end_time']}",
+                            halign=Gtk.Align.START
+                        ))
+                        session_box.append(Gtk.Label(
+                            label=f"Dauer: {format_duration(session['duration'])}",
+                            halign=Gtk.Align.START
+                        ))
+                        session_box.append(Gtk.Label(
+                            label=f"Ergebnis: {session['correct']}/{session['total']} richtig",
+                            halign=Gtk.Align.START
+                        ))
+                        if session['topic']:
+                            session_box.append(Gtk.Label(
+                                label=f"Thema: {session['topic']}",
+                                halign=Gtk.Align.START
+                            ))
+                        sessions_box.append(session_box)
+                        sessions_box.append(Gtk.Separator())
+
+                    mut_stats_box.append(sessions_frame)
+
+            # Zeitbereich-Änderung mit Statistik-Update verbinden
+            mut_time_combo.connect('changed', update_mut_stats)
+            
+            # Initial die Statistiken anzeigen
+            update_mut_stats(mut_time_combo)
+
+            # M.U.T. Tab zum Notebook hinzufügen
+            mut_scroll = Gtk.ScrolledWindow()
+            mut_scroll.set_child(mut_box)
+            notebook.append_page(mut_scroll, Gtk.Label(label="M.U.T. Statistiken"))
 
             # Notebook zur Reports Box hinzufügen
             reports_box.append(notebook)
