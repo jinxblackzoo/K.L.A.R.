@@ -14,43 +14,56 @@ Copyright (C) 2025 jinx@blackzoo.de
 
 ## Features
 
-- Mehrere Karteikarten-Datenbanken 
+### Karteikarten-Management
+- Mehrere Karteikarten-Datenbanken parallel verwalten
 - Einfache und intuitive Benutzeroberfläche
-- Intelligentes Lernsystem für die Karteikarten 
-   - Lernsystem nach gemeisterten Level
-      - Level 1: Neu eingegebene Karteikarten. Priorität: Sehr hoch. Gewichtung: 4
-      - Level 2: Karteikarten, die bereits 4 mal im Level 1 richtig beantwortet wurden. Priorität: hoch. Gewichtung: 3
-      - Level 3: Karteikarten, die bereits 6 mal im Level 2 richtig beantwortet wurden. Priorität: normal. Gewichtung: 2
-      - Level 4: Karteikarten, die bereits 10 mal im Level 3 richtig beantwortet wurden. Priorität: niedrig. Gewichtung: 1
-   - Rückstufung nach Level: 
-         - Level 1: 1 mal falsch beantwortet > Erhöhung der Abfragefrequenz um den Faktor 2
-         - Level 2: 1 mal falsch beantwortet > Rückstufung auf Level 1 
-         - Level 3: 2 mal falsch beantwortet > Rückstufung auf Level 2 
-         - Level 4: 2 mal falsch beantwortet > Rückstufung auf Level 3
-   - Abfragefrequenz:
-         - Level 1:  Alle Karteikarten werden mindestens 5 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 4 richtigen Antworten erfolgt die Hochstufung auf Level 2. Abfrage nach dem Zufallsprinzip mit der Gewichtung 4 
-         - Level 2:  Alle Karteikarten werden mindestens 10 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 6 richtigen Antworten erfolgt die Hochstufung auf Level 3. Abfrage nach dem Zufallsprinzip mit der Gewichtung 3 
-         - Level 3:  Alle Karteikarten werden mindestens 15 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 10 richtigen Antworten erfolgt die Hochstufung auf Level 4. Abfrage nach dem Zufallsprinzip mit der Gewichtung 2 
-         - Level 4:  Alle Karteikarten werden mindestens nach dem Zufallsprinzip abgefragt. Bei Richtiger  Antwort bleibt die Karteikarte auf dem Level und wird weiterhin regelmäßig nach der Gewichtung und dem Zufallsprinzip abgefragt. Abfrage nach dem Zufallsprinzip mit der Gewichtung 1
-         Die Abfrage soll generell nach dem Zufallsprinzip erfolgen. Lediglich die Häufigkeit der Abfrage wird sich je nach Level und Gewichtung unterscheiden. Also neue Karteikarten und solche mit einem niedrigem Level und somit hoher Gewichtung háufiger. 
+- Import und Export von Karteikarten
 
-- Fortschrittsüberwachung und PDF-Reports
+### Intelligentes Lernsystem
+- **Lernsystem nach gemeisterten Level**
+   - Level 1: Neu eingegebene Karteikarten. Priorität: Sehr hoch. Gewichtung: 4
+   - Level 2: Karteikarten, die bereits 4 mal im Level 1 richtig beantwortet wurden. Priorität: hoch. Gewichtung: 3
+   - Level 3: Karteikarten, die bereits 6 mal im Level 2 richtig beantwortet wurden. Priorität: normal. Gewichtung: 2
+   - Level 4: Karteikarten, die bereits 10 mal im Level 3 richtig beantwortet wurden. Priorität: niedrig. Gewichtung: 1
+
+- **Rückstufungssystem** 
+   - Level 1: 1 mal falsch beantwortet > Erhöhung der Abfragefrequenz um den Faktor 2
+   - Level 2: 1 mal falsch beantwortet > Rückstufung auf Level 1 
+   - Level 3: 2 mal falsch beantwortet > Rückstufung auf Level 2 
+   - Level 4: 2 mal falsch beantwortet > Rückstufung auf Level 3
+
+- **Intelligente Abfragefrequenz**
+   - Level 1: Mindestens 5 Abfragen, 4 richtige für Aufstieg, Gewichtung 4
+   - Level 2: Mindestens 10 Abfragen, 6 richtige für Aufstieg, Gewichtung 3
+   - Level 3: Mindestens 15 Abfragen, 10 richtige für Aufstieg, Gewichtung 2
+   - Level 4: Regelmäßige Wiederholung, Gewichtung 1
+
+### Neues Reporting-System
+- Detaillierte Statistiken für jede Karteikarten-Sammlung
+- Zeiterfassung für Übungseinheiten
+- Erfolgsquoten über verschiedene Zeiträume:
+  - Letzte 7 Tage
+  - Letzte 30 Tage
+  - Letztes Jahr
+  - Gesamtzeitraum
+- Durchschnittliche Übungszeiten pro Karte
+- Übersichtliche Darstellung in Tabs
+
+## Dateispeicherorte
  
- ## Dateispeicherorte
- 
- Das Programm speichert Daten an folgenden Orten:
+Das Programm speichert Daten an folgenden Orten:
 
 ### Persönliche Daten
-- `~/.local/share/voll/databases/`: Karteikarten-Sammlungen
-- `~/.local/share/voll/exports/`: Exportierte PDF-Dateien und CSV-Listen
-- `~/.local/share/voll/reports/`: Lernfortschritte und Statistiken
+- `~/.local/share/klar/databases/`: Karteikarten-Sammlungen
+- `~/.local/share/klar/exports/`: Exportierte PDF-Dateien und CSV-Listen
+- `~/.local/share/klar/reports/`: Lernfortschritte und Statistiken
 
 ### Konfigurationsdateien
-- `~/.config/voll/settings.ini`: Programmeinstellungen
-- `~/.config/voll/databases.json`: Liste der verfügbaren Karteikarten-Sammlungen
-- `~/.config/voll/themes/`: Benutzerdefinierte Themes (optional)
+- `~/.config/klar/settings.ini`: Programmeinstellungen
+- `~/.config/klar/databases.json`: Liste der verfügbaren Karteikarten-Sammlungen
+- `~/.config/klar/themes/`: Benutzerdefinierte Themes (optional)
 
-Die Datenbanken können einfach gesichert werden, indem der komplette `~/.local/share/voll` Ordner kopiert wird.
+Die Datenbanken können einfach gesichert werden, indem der komplette `~/.local/share/klar` Ordner kopiert wird.
 
 ## Installation
 
@@ -58,10 +71,10 @@ Die Installation ist ganz einfach und funktioniert auf allen Linux-Systemen:
 
 1. Öffne ein Terminal (meist mit Strg+Alt+T)
 
-2. Lade V.O.L.L. herunter:
+2. Lade K.L.A.R. herunter:
    ```bash
-   git clone https://github.com/jinxblackzoo/V.O.L.L.
-   cd V.O.L.L.
+   git clone https://github.com/jinxblackzoo/K.L.A.R.
+   cd K.L.A.R.
    ```
 
 3. Starte die Installation:
@@ -72,15 +85,15 @@ Die Installation ist ganz einfach und funktioniert auf allen Linux-Systemen:
 
 Das Installationsprogramm erkennt deine Linux-Version automatisch und installiert alle benötigten Programme. Folge einfach den Anweisungen auf dem Bildschirm.
 
-Nach der Installation findest du V.O.L.L. im Startmenü oder kannst es mit dem Befehl `voll` im Terminal starten.
+Nach der Installation findest du K.L.A.R. im Startmenü oder kannst es mit dem Befehl `klar` im Terminal starten.
 
 ## Update
 
-Um V.O.L.L. zu aktualisieren:
+Um K.L.A.R. zu aktualisieren:
 
-1. Gehe in das V.O.L.L.-Verzeichnis:
+1. Gehe in das K.L.A.R.-Verzeichnis:
    ```bash
-   cd V.O.L.L.
+   cd K.L.A.R.
    ```
 
 2. Hole die neueste Version:
@@ -98,37 +111,29 @@ Um V.O.L.L. zu aktualisieren:
 **WICHTIG**: Erstelle vor der Deinstallation ein Backup deiner Karteikarten-Sammlungen, wenn du sie später noch brauchst:
 ```bash
 # Backup erstellen
-mkdir -p ~/voll_backup
-cp -r ~/.local/share/voll ~/voll_backup/
+mkdir -p ~/klar_backup
+cp -r ~/.local/share/klar ~/klar_backup/
 ```
 
 1. Lösche die Programmdateien:
    ```bash
    # Python-Modul entfernen
-   rm -rf ~/.local/lib/python*/site-packages/voll*
+   rm -rf ~/.local/lib/python*/site-packages/klar*
    
-   # Ausführbare Datei entfernen
-   rm -f ~/.local/bin/voll
+   # Konfigurationsdateien entfernen
+   rm -rf ~/.config/klar
    
-   # Desktop-Integration entfernen
-   rm -f ~/.local/share/applications/voll.desktop
-   rm -f ~/.local/share/icons/hicolor/scalable/apps/voll.svg
-   gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/
+   # Programmdaten entfernen (ACHTUNG: Löscht alle Karteikarten!)
+   rm -rf ~/.local/share/klar
+   
+   # Desktop-Verknüpfung entfernen
+   rm ~/.local/share/applications/klar.desktop
    ```
 
-2. Optional: Lösche deine persönlichen Daten (ACHTUNG: Dies löscht alle Vokabeln und Einstellungen!):
-```bash
-   rm -rf ~/.local/share/voll    # Vokabeldatenbank
-   rm -rf ~/.config/voll         # Einstellungen
-```
-
-3. Optional: Lösche das Backup, wenn du es nicht mehr brauchst:
-```bash
-rm -rf ~/.config/voll     # Konfiguration
-rm -rf ~/.local/share/voll    # Karteikarten-Sammlungen
-```
-
-**Hinweis**: Die Systemabhängigkeiten (GTK4, etc.) werden nicht entfernt, da sie möglicherweise von anderen Programmen verwendet werden.
+2. Optional: Entferne das Quellverzeichnis:
+   ```bash
+   rm -rf ~/K.L.A.R.
+   ```
 
 ## Probleme?
 
@@ -149,12 +154,12 @@ rm -rf ~/.local/share/voll    # Karteikarten-Sammlungen
 3. **Fehlermeldungen anzeigen**:
    Starte das Programm im Terminal:
    ```bash
-   voll
+   klar
    ```
 
 ### Weitere Hilfe
 Wenn du weitere Hilfe brauchst:
-1. Öffne ein [Issue auf GitHub](https://github.com/jinxblackzoo/V.O.L.L./issues)
+1. Öffne ein [Issue auf GitHub](https://github.com/jinxblackzoo/K.L.A.R./issues)
 2. Beschreibe dein Problem
 3. Füge die Fehlermeldung aus dem Terminal hinzu
 
@@ -162,12 +167,35 @@ Wenn du weitere Hilfe brauchst:
 
 Möchten Sie zum Projekt beitragen? Hier sind die Schritte:
 
-1. Repository klonen
+1. Repository klonen:
+   ```bash
+   git clone https://github.com/jinxblackzoo/K.L.A.R.
+   cd K.L.A.R.
+   ```
+
 2. Virtuelle Umgebung erstellen:
    ```bash
    python -m venv venv
    source venv/bin/activate
    pip install -e .
    ```
-3. Änderungen vornehmen
-4. Pull Request erstellen
+
+3. Abhängigkeiten installieren:
+   ```bash
+   # Für Debian/Ubuntu
+   sudo apt-get install python3-gi python3-gi-cairo gir1.2-gtk-4.0
+
+   # Für Fedora
+   sudo dnf install python3-gobject gtk4
+   
+   # Für Arch Linux
+   sudo pacman -S python-gobject gtk4
+   ```
+
+4. Änderungen vornehmen und testen
+
+5. Pull Request erstellen:
+   - Fork das Repository auf GitHub
+   - Erstelle einen neuen Branch für deine Änderungen
+   - Committe deine Änderungen
+   - Erstelle einen Pull Request

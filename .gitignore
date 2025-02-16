@@ -45,3 +45,6 @@ Test*
 temp*
 *.tmp
 *.temp
+
+# Entwicklungsplan
+ENTWICKLUNGSPLAN.md
