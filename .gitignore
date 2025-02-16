@@ -39,3 +39,9 @@ ENV/
 # Vokabeltrainer specific
 *.db
 test_database/
+
+# Temporäre Dateien
+Test*
+temp*
+*.tmp
+*.temp
