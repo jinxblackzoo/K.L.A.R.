@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-V.O.L.L. - Vokabeln Ohne Langeweile Lernen
+K.L.A.R. - Karteikarten Lernen Aber Richtig
 Copyright (C) 2025 jinx@blackzoo.de
 
 This program is free software: you can redistribute it and/or modify
@@ -14,25 +14,26 @@ the Free Software Foundation, either version 3 of the License, or
 from setuptools import setup, find_packages
 
 setup(
-    name="voll",
-    version="1.0.0",
+    name='klar',
+    version='0.1',
     packages=find_packages(),
     install_requires=[
-        'SQLAlchemy>=2.0.0',
-        'reportlab>=4.0.0',
+        'pygobject',
+        'reportlab',
+        'sqlalchemy'
     ],
     entry_points={
         'console_scripts': [
-            'voll=voll.main:main',
-        ],
+            'klar=klar.main:main'
+        ]
     },
     author="jinx@blackzoo.de",
     author_email="jinx@blackzoo.de",
-    description="V.O.L.L. - Vokabeln Ohne Langeweile Lernen",
+    description="K.L.A.R. - Karteikarten Lernen Aber Richtig",
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
-    keywords="education, language, learning, vocabulary, gtk4",
-    url="https://github.com/jinxblackzoo/V.O.L.L.",
+    keywords="education, learning, flashcards, gtk4",
+    url="https://github.com/jinxblackzoo/K.L.A.R.",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Education",

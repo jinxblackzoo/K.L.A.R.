@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Vokabeltrainer - Hauptprogramm des Vokabeltrainers
+K.L.A.R. - Karteikarten Lernen Aber Richtig - Ein kinderfreundlicher Karteikarten-Trainer mit GTK4-Oberfläche
 Copyright (C) 2025 jinx@blackzoo.de
 
 This program is free software: you can redistribute it and/or modify
@@ -19,10 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from voll.gui import VocabTrainerApp
+from klar.gui import FlashcardTrainerApp
 
 def main():
-    app = VocabTrainerApp(application_id="de.blackzoo.voll")
+    app = FlashcardTrainerApp(application_id="de.blackzoo.klar")
     return app.run(None)
 
 if __name__ == "__main__":

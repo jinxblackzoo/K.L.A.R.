@@ -1,8 +1,8 @@
 #!/bin/bash
 
-echo "V.O.L.L. - Installation"
+echo "K.L.A.R. - Installation"
 echo "===================="
-echo "Vokabeln Ohne Langeweile Lernen - Installations-Assistent"
+echo "Karteikarten Lernen Aber Richtig - Installations-Assistent"
 echo
 
 # Distributions-Erkennung
@@ -46,34 +46,34 @@ esac
 
 # Programm installieren
 echo
-echo "2. Installiere V.O.L.L..."
+echo "2. Installiere K.L.A.R..."
 
 # Verzeichnisse erstellen
 echo "Erstelle Programm-Verzeichnisse..."
 mkdir -p ~/.local/bin
 PYTHON_SITE_PACKAGES=$(python3 -c "import site; print(site.USER_SITE)")
-mkdir -p "$PYTHON_SITE_PACKAGES/voll"
+mkdir -p "$PYTHON_SITE_PACKAGES/klar"
 mkdir -p ~/.local/share/applications
 mkdir -p ~/.local/share/icons/hicolor/scalable/apps
 
 # Python-Dateien kopieren
 echo "Kopiere Programm-Dateien..."
-cp -r voll/* "$PYTHON_SITE_PACKAGES/voll/"
+cp -r klar/* "$PYTHON_SITE_PACKAGES/klar/"
 
 # Starter-Skript erstellen
 echo "Erstelle Starter-Skript..."
-cat > ~/.local/bin/voll << 'EOF'
+cat > ~/.local/bin/klar << 'EOF'
 #!/usr/bin/env python3
-from voll.main import main
+from klar.main import main
 if __name__ == "__main__":
     main()
 EOF
-chmod +x ~/.local/bin/voll
+chmod +x ~/.local/bin/klar
 
 # Desktop-Integration
 echo "Erstelle Desktop-Integration..."
-cp desktop/voll.desktop ~/.local/share/applications/
-cp desktop/voll.svg ~/.local/share/icons/hicolor/scalable/apps/
+cp desktop/klar.desktop ~/.local/share/applications/
+cp desktop/klar.svg ~/.local/share/icons/hicolor/scalable/apps/
 gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/
 
 # PATH-Variable prüfen und ggf. setzen
@@ -86,7 +86,7 @@ fi
 echo
 echo " Installation abgeschlossen! "
 echo
-echo "Du findest V.O.L.L. jetzt im Startmenü oder kannst es mit 'voll' im Terminal starten."
+echo "Du findest K.L.A.R. jetzt im Startmenü oder kannst es mit 'klar' im Terminal starten."
 echo "Falls das Programm nicht startet, öffne ein neues Terminal oder melde dich neu an."
 echo
-echo "Viel Spaß beim Vokabeln lernen! "
+echo "Viel Spaß beim Lernen mit Karteikarten! "

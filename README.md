@@ -1,6 +1,6 @@
-# V.O.L.L. - Vokabeln Ohne Langeweile Lernen
+# K.L.A.R. - Karteikarten Lernen Aber Richtig
 
-Ein kinderfreundlicher Vokabeltrainer mit moderner GTK4-Oberfläche, der das Lernen von Vokabeln spannend und unterhaltsam macht.
+Ein kinderfreundlicher Karteikarten-Trainer mit moderner GTK4-Oberfläche, der das Lernen von Karteikarten spannend und unterhaltsam macht. Zusätzlich gibt er Lehrern, Erzeihungsberechtigten und Lernenden ein System zur Kontrolle und Selbstkontrolle mittels eines Reportingsystems.
 
 ## Autor
 jinx@blackzoo.de
@@ -14,23 +14,40 @@ Copyright (C) 2025 jinx@blackzoo.de
 
 ## Features
 
-- Mehrsprachige Vokabeldatenbanken
+- Mehrere Karteikarten-Datenbanken 
 - Einfache und intuitive Benutzeroberfläche
-- Intelligentes Lernsystem
+- Intelligentes Lernsystem für die Karteikarten 
+   - Lernsystem nach gemeisterten Level
+      - Level 1: Neu eingegebene Karteikarten. Priorität: Sehr hoch. Gewichtung: 4
+      - Level 2: Karteikarten, die bereits 4 mal im Level 1 richtig beantwortet wurden. Priorität: hoch. Gewichtung: 3
+      - Level 3: Karteikarten, die bereits 6 mal im Level 2 richtig beantwortet wurden. Priorität: normal. Gewichtung: 2
+      - Level 4: Karteikarten, die bereits 10 mal im Level 3 richtig beantwortet wurden. Priorität: niedrig. Gewichtung: 1
+   - Rückstufung nach Level: 
+         - Level 1: 1 mal falsch beantwortet > Erhöhung der Abfragefrequenz um den Faktor 2
+         - Level 2: 1 mal falsch beantwortet > Rückstufung auf Level 1 
+         - Level 3: 2 mal falsch beantwortet > Rückstufung auf Level 2 
+         - Level 4: 2 mal falsch beantwortet > Rückstufung auf Level 3
+   - Abfragefrequenz:
+         - Level 1:  Alle Karteikarten werden mindestens 5 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 4 richtigen Antworten erfolgt die Hochstufung auf Level 2. Abfrage nach dem Zufallsprinzip mit der Gewichtung 4 
+         - Level 2:  Alle Karteikarten werden mindestens 10 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 6 richtigen Antworten erfolgt die Hochstufung auf Level 3. Abfrage nach dem Zufallsprinzip mit der Gewichtung 3 
+         - Level 3:  Alle Karteikarten werden mindestens 15 mal nach dem Zufallsprinzip abgefragt. Bei mindestens 10 richtigen Antworten erfolgt die Hochstufung auf Level 4. Abfrage nach dem Zufallsprinzip mit der Gewichtung 2 
+         - Level 4:  Alle Karteikarten werden mindestens nach dem Zufallsprinzip abgefragt. Bei Richtiger  Antwort bleibt die Karteikarte auf dem Level und wird weiterhin regelmäßig nach der Gewichtung und dem Zufallsprinzip abgefragt. Abfrage nach dem Zufallsprinzip mit der Gewichtung 1
+         Die Abfrage soll generell nach dem Zufallsprinzip erfolgen. Lediglich die Häufigkeit der Abfrage wird sich je nach Level und Gewichtung unterscheiden. Also neue Karteikarten und solche mit einem niedrigem Level und somit hoher Gewichtung háufiger. 
+
 - Fortschrittsüberwachung und PDF-Reports
-- Exportfunktion für Vokabeln
-
-## Dateispeicherorte
-
-Das Programm speichert Daten an folgenden Orten:
+ 
+ ## Dateispeicherorte
+ 
+ Das Programm speichert Daten an folgenden Orten:
 
 ### Persönliche Daten
-- `~/.local/share/voll/databases/`: Vokabeldatenbanken
+- `~/.local/share/voll/databases/`: Karteikarten-Sammlungen
 - `~/.local/share/voll/exports/`: Exportierte PDF-Dateien und CSV-Listen
 - `~/.local/share/voll/reports/`: Lernfortschritte und Statistiken
 
-### Konfiguration
+### Konfigurationsdateien
 - `~/.config/voll/settings.ini`: Programmeinstellungen
+- `~/.config/voll/databases.json`: Liste der verfügbaren Karteikarten-Sammlungen
 - `~/.config/voll/themes/`: Benutzerdefinierte Themes (optional)
 
 Die Datenbanken können einfach gesichert werden, indem der komplette `~/.local/share/voll` Ordner kopiert wird.
@@ -78,7 +95,7 @@ Um V.O.L.L. zu aktualisieren:
 
 ## Deinstallation
 
-**WICHTIG**: Erstelle vor der Deinstallation ein Backup deiner Vokabeln, wenn du sie später noch brauchst:
+**WICHTIG**: Erstelle vor der Deinstallation ein Backup deiner Karteikarten-Sammlungen, wenn du sie später noch brauchst:
 ```bash
 # Backup erstellen
 mkdir -p ~/voll_backup
@@ -100,15 +117,16 @@ cp -r ~/.local/share/voll ~/voll_backup/
    ```
 
 2. Optional: Lösche deine persönlichen Daten (ACHTUNG: Dies löscht alle Vokabeln und Einstellungen!):
-   ```bash
+```bash
    rm -rf ~/.local/share/voll    # Vokabeldatenbank
    rm -rf ~/.config/voll         # Einstellungen
-   ```
+```
 
 3. Optional: Lösche das Backup, wenn du es nicht mehr brauchst:
-   ```bash
-   rm -rf ~/voll_backup
-   ```
+```bash
+rm -rf ~/.config/voll     # Konfiguration
+rm -rf ~/.local/share/voll    # Karteikarten-Sammlungen
+```
 
 **Hinweis**: Die Systemabhängigkeiten (GTK4, etc.) werden nicht entfernt, da sie möglicherweise von anderen Programmen verwendet werden.
 
